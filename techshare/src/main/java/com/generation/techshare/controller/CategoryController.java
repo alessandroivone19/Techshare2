@@ -20,7 +20,7 @@ import com.generation.techshare.service.CategoryService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/categories")
+@RequestMapping("techshare/api/categories")
 @RequiredArgsConstructor
 public class CategoryController {
 

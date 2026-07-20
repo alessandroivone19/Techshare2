@@ -20,6 +20,7 @@ public class User {
     private String password;
     private String phoneNumber;
     private String city;
+    private String role; // Ruolo dell'utente (es. "ADMIN", "USER", ecc.)
 
 
 }

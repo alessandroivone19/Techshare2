@@ -1,4 +1,4 @@
-/* package com.generation..security;
+ package com.generation.techshare.security;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
@@ -32,11 +32,11 @@ public class JwtService {
 
         return Jwts.builder()
                 .claims(claims)
-                .subject(user.getUsername()) // Il proprietario del token                       // sub
+                .subject(user.getEmail()) // Il proprietario del token                       // sub
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))             // exp => tempo di scadenza
                 .signWith(Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8)))
                 .compact();
     }
 }
-    */
+    

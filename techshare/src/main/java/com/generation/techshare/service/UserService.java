@@ -69,4 +69,9 @@ public class UserService {
         userRepository.delete(user);
     }
 
+    
+    // Trova un utente per email
+    public User findByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
 }

@@ -20,7 +20,7 @@ import com.generation.techshare.service.EquipmentService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/equipments")
+@RequestMapping("techshare/api/equipments")
 @RequiredArgsConstructor
 public class EquipmentController {
 
