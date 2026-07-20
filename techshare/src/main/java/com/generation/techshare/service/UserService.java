@@ -2,6 +2,7 @@ package com.generation.techshare.service;
 
 import java.util.List;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.generation.techshare.dto.UserDto;
@@ -17,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
 
     // Trova un utente per ID
@@ -36,6 +38,7 @@ public class UserService {
     public UserDto insert(UserDto userDto) throws ServiceException {
         try{
             User user = userMapper.toEntity(userDto);
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
             User savedUser = userRepository.save(user);
             return userMapper.toDTO(savedUser);
         }catch(Exception e){
@@ -51,7 +54,7 @@ public class UserService {
         user.setFirstName(userDto.getFirstName());
         user.setLastName(userDto.getLastName());
         user.setEmail(userDto.getEmail());
-        user.setPassword(userDto.getPassword());        // da rivedere
+        user.setPassword(passwordEncoder.encode(userDto.getPassword()));        // da rivedere
         user.setPhoneNumber(userDto.getPhoneNumber());
         user.setCity(userDto.getCity());
         

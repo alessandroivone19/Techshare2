@@ -20,7 +20,7 @@ import com.generation.techshare.service.UserService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/techshare/api/users")
 @RequiredArgsConstructor
 public class UserController {
 
