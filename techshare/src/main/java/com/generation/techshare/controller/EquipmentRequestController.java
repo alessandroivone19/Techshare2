@@ -30,20 +30,31 @@ public class EquipmentRequestController {
 
     private final EquipmentRequestService equipmentRequestService;
 
-    // Tutti possono vedere le richieste
+    // Solo l'utente autenticato può vedere LE SUE richieste
     @GetMapping
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<EquipmentRequestDto>> getAllRequests() {
-        return ResponseEntity.ok(equipmentRequestService.findAll());
+        // Recuperiamo l'email dell'utente attualmente autenticato dal JWT
+        String currentUserEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        
+        // Passiamo l'email al service per filtrare le sole richieste dell'utente
+        List<EquipmentRequestDto> userRequests = equipmentRequestService.findByCurrentUser(currentUserEmail);
+        
+        return ResponseEntity.ok(userRequests);
     }
 
-    // Tutti possono vedere una richiesta
+    // Un utente può vedere il dettaglio di una richiesta SOLO se gli appartiene (o se è ADMIN)
     @GetMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getRequestById(@PathVariable Integer id) {
         try {
-            EquipmentRequestDto requestDto = equipmentRequestService.findById(id);
+            String currentUserEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+            // Passiamo l'email per verificare i permessi di lettura
+            EquipmentRequestDto requestDto = equipmentRequestService.findByIdWithPermission(id, currentUserEmail);
             return ResponseEntity.ok(requestDto);
         } catch (ServiceException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+            // Se l'utente non è autorizzato o la risorsa non esiste, restituiamo FORBIDDEN o NOT_FOUND
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
         }
     }
 

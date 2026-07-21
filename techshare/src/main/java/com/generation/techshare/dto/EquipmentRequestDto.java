@@ -16,6 +16,5 @@ public class EquipmentRequestDto {
     private String status;
     private Integer userId;
     private Integer equipmentId;
-    private Integer categoryId;
 
 }

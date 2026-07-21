@@ -15,13 +15,11 @@ public interface EquipmentRequestMapper {
     // EquipmentRequest Entity -> EquipmentRequestDTO
     @Mapping(source = "user.id", target = "userId")
     @Mapping(source = "equipment.id", target = "equipmentId")
-    @Mapping(source = "category.id", target = "categoryId")
     EquipmentRequestDto toDto(EquipmentRequest equipmentRequest);
 
     // EquipmentRequestDTO -> EquipmentRequest Entity
     @Mapping(target = "user", ignore = true)
     @Mapping(target = "equipment", ignore = true)
-    @Mapping(target = "category", ignore = true)
     EquipmentRequest toEntity(EquipmentRequestDto equipmentRequestDto);
 
     List<EquipmentRequestDto> toDtos(List<EquipmentRequest> equipmentRequests);

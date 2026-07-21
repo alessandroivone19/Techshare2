@@ -40,8 +40,6 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/techshare/api/categories/**").permitAll()     // GET categoria singola per tutti
                 .requestMatchers(HttpMethod.GET, "/techshare/api/equipments").permitAll()        // GET equipments per tutti
                 .requestMatchers(HttpMethod.GET, "/techshare/api/equipments/**").permitAll()     // GET equipment singolo per tutti
-                .requestMatchers(HttpMethod.GET, "/techshare/api/requests").permitAll()          // GET requests per tutti
-                .requestMatchers(HttpMethod.GET, "/techshare/api/requests/**").permitAll()       // GET request singola per tutti
                 .requestMatchers(HttpMethod.POST,"/techshare/api/users").permitAll()           // POST requests per tutti
                 
                 // Tutti gli altri endpoint richiedono autenticazione
