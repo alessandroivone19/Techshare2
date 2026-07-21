@@ -18,14 +18,19 @@ import lombok.RequiredArgsConstructor;
 public class UserService {
 
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
+    private final PasswordEncoder passwordEncoder;
 
     // Trova un utente per ID
     public UserDto findById(Integer id) throws ServiceException {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ServiceException("Utente non trovato con ID: " + id));
         return userMapper.toDTO(user);
+    }
+
+    // Trova un utente per email
+    public User findByEmail(String email) {
+        return userRepository.findByEmail(email);
     }
 
     // Trova tutti gli utenti
@@ -38,7 +43,12 @@ public class UserService {
     public UserDto insert(UserDto userDto) throws ServiceException {
         try{
             User user = userMapper.toEntity(userDto);
-            user.setPassword(passwordEncoder.encode(user.getPassword()));
+            // Hasha la password prima di salvarla
+            user.setPassword(passwordEncoder.encode(userDto.getPassword()));
+            // Imposta il ruolo di default a USER se non specificato
+            if (user.getRole() == null || user.getRole().isEmpty()) {
+                user.setRole("USER");
+            }
             User savedUser = userRepository.save(user);
             return userMapper.toDTO(savedUser);
         }catch(Exception e){
@@ -46,32 +56,46 @@ public class UserService {
         }
     }
 
-    // Aggiorna un utente
-    public UserDto update(Integer id, UserDto userDto) throws ServiceException {
+    // Aggiorna un utente (con controllo permessi)
+    public UserDto updateWithPermission(Integer id, UserDto userDto, String currentUserEmail) throws ServiceException {
+        User currentUser = findByEmail(currentUserEmail);
+        
+        // Controlla se l'utente corrente è ADMIN o sta modificando se stesso
+        if (!currentUser.getRole().equals("ADMIN") && !currentUser.getId().equals(id)) {
+            throw new ServiceException("Non hai permessi per modificare questo utente");
+        }
+
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ServiceException("Utente non trovato con ID: " + id));
 
         user.setFirstName(userDto.getFirstName());
         user.setLastName(userDto.getLastName());
         user.setEmail(userDto.getEmail());
-        user.setPassword(passwordEncoder.encode(userDto.getPassword()));        // da rivedere
+        user.setPassword(passwordEncoder.encode(userDto.getPassword()));
         user.setPhoneNumber(userDto.getPhoneNumber());
         user.setCity(userDto.getCity());
+        
+        // Solo ADMIN può cambiare il ruolo
+        if (currentUser.getRole().equals("ADMIN") && userDto.getRole() != null) {
+            user.setRole(userDto.getRole());
+        }
         
         User updatedUser = userRepository.save(user);
         return userMapper.toDTO(updatedUser);
     }
 
-    // Elimina un utente
-    public void delete(Integer id) throws ServiceException {
+    // Elimina un utente (con controllo permessi)
+    public void deleteWithPermission(Integer id, String currentUserEmail) throws ServiceException {
+        User currentUser = findByEmail(currentUserEmail);
+        
+        // Controlla se l'utente corrente è ADMIN o sta eliminando se stesso
+        if (!currentUser.getRole().equals("ADMIN") && !currentUser.getId().equals(id)) {
+            throw new ServiceException("Non hai permessi per eliminare questo utente");
+        }
+
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ServiceException("Utente non trovato con ID: " + id));
         userRepository.delete(user);
     }
 
-    
-    // Trova un utente per email
-    public User findByEmail(String email) {
-        return userRepository.findByEmail(email);
-    }
 }

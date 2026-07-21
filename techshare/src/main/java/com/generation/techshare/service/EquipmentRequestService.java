@@ -41,27 +41,26 @@ public class EquipmentRequestService {
         return equipmentRequestMapper.toDtos(equipmentRequests);
     }
 
-    // Crea una nuova richiesta
-    public EquipmentRequestDto insert(EquipmentRequestDto equipmentRequestDto) throws ServiceException {
+    // Crea una nuova richiesta (con controllo permessi)
+    public EquipmentRequestDto insertWithPermission(EquipmentRequestDto equipmentRequestDto, String currentUserEmail) throws ServiceException {
         EquipmentRequest equipmentRequest = equipmentRequestMapper.toEntity(equipmentRequestDto);
 
         try {
-
-            // Imposta user
-            if (equipmentRequestDto.getUserId() != null) {
-                User user = userRepository.findById(equipmentRequestDto.getUserId())
-                        .orElseThrow(() -> new ServiceException("Utente non trovato con ID: " + equipmentRequestDto.getUserId()));
-                equipmentRequest.setUser(user);
+            // Imposta automaticamente l'utente come l'utente corrente
+            User user = userRepository.findByEmail(currentUserEmail);
+            if (user == null) {
+                throw new ServiceException("Utente corrente non trovato");
             }
+            equipmentRequest.setUser(user);
             
-            // Imposta equipment
+            // Imposta equipment se fornito
             if (equipmentRequestDto.getEquipmentId() != null) {
                 Equipment equipment = equipmentRepository.findById(equipmentRequestDto.getEquipmentId())
                         .orElseThrow(() -> new ServiceException("Attrezzatura non trovata con ID: " + equipmentRequestDto.getEquipmentId()));
                 equipmentRequest.setEquipment(equipment);
             }
             
-            // Imposta category
+            // Imposta category se fornita
             if (equipmentRequestDto.getCategoryId() != null) {
                 Category category = categoryRepository.findById(equipmentRequestDto.getCategoryId())
                         .orElseThrow(() -> new ServiceException("Categoria non trovata con ID: " + equipmentRequestDto.getCategoryId()));
@@ -77,11 +76,21 @@ public class EquipmentRequestService {
         
     }
 
-    // Aggiorna una richiesta
-    public EquipmentRequestDto update(Integer id, EquipmentRequestDto equipmentRequestDto) throws ServiceException {
+    // Aggiorna una richiesta (con controllo permessi)
+    public EquipmentRequestDto updateWithPermission(Integer id, EquipmentRequestDto equipmentRequestDto, String currentUserEmail) throws ServiceException {
         try{
             EquipmentRequest equipmentRequest = equipmentRequestRepository.findById(id)
                     .orElseThrow(() -> new ServiceException("Richiesta non trovata con ID: " + id));
+            
+            // Controlla se l'utente corrente ha fatto la richiesta o è ADMIN
+            User currentUser = userRepository.findByEmail(currentUserEmail);
+            if (currentUser == null) {
+                throw new ServiceException("Utente corrente non trovato");
+            }
+            
+            if (!currentUser.getRole().equals("ADMIN") && !equipmentRequest.getUser().getId().equals(currentUser.getId())) {
+                throw new ServiceException("Non hai permessi per modificare questa richiesta");
+            }
     
             equipmentRequest.setTitle(equipmentRequestDto.getTitle());
             equipmentRequest.setDescription(equipmentRequestDto.getDescription());
@@ -89,13 +98,6 @@ public class EquipmentRequestService {
             equipmentRequest.setLongitude(equipmentRequestDto.getLongitude());
             equipmentRequest.setSearchRadius(equipmentRequestDto.getSearchRadius());
             equipmentRequest.setStatus(equipmentRequestDto.getStatus());
-            
-            // Aggiorna user se fornito
-            if (equipmentRequestDto.getUserId() != null) {
-                User user = userRepository.findById(equipmentRequestDto.getUserId())
-                        .orElseThrow(() -> new ServiceException("Utente non trovato con ID: " + equipmentRequestDto.getUserId()));
-                equipmentRequest.setUser(user);
-            }
             
             // Aggiorna equipment se fornito
             if (equipmentRequestDto.getEquipmentId() != null) {
@@ -114,14 +116,25 @@ public class EquipmentRequestService {
             EquipmentRequest updatedEquipmentRequest = equipmentRequestRepository.save(equipmentRequest);
             return equipmentRequestMapper.toDto(updatedEquipmentRequest);
         }catch (Exception e){
-            throw new ServiceException("non e stato possibile aggiornare la richiesta");
+            throw new ServiceException("non è stato possibile aggiornare la richiesta");
         }
     }
 
-    // Elimina una richiesta
-    public void delete(Integer id) throws ServiceException {
+    // Elimina una richiesta (con controllo permessi)
+    public void deleteWithPermission(Integer id, String currentUserEmail) throws ServiceException {
         EquipmentRequest equipmentRequest = equipmentRequestRepository.findById(id)
                 .orElseThrow(() -> new ServiceException("Richiesta non trovata con ID: " + id));
+        
+        // Controlla se l'utente corrente ha fatto la richiesta o è ADMIN
+        User currentUser = userRepository.findByEmail(currentUserEmail);
+        if (currentUser == null) {
+            throw new ServiceException("Utente corrente non trovato");
+        }
+        
+        if (!currentUser.getRole().equals("ADMIN") && !equipmentRequest.getUser().getId().equals(currentUser.getId())) {
+            throw new ServiceException("Non hai permessi per eliminare questa richiesta");
+        }
+        
         equipmentRequestRepository.delete(equipmentRequest);
     }
 

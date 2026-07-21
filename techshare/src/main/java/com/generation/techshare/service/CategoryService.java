@@ -32,7 +32,7 @@ public class CategoryService {
         return categoryMapper.toDtos(categories);
     }
 
-    // Crea una nuova categoria
+    // Crea una nuova categoria (solo ADMIN - controllato dal Controller)
     public CategoryDto insert(CategoryDto categoryDto) throws ServiceException {
         try{
             Category category = categoryMapper.toEntity(categoryDto);
@@ -43,7 +43,7 @@ public class CategoryService {
         }
     }
 
-    // Aggiorna una categoria
+    // Aggiorna una categoria (solo ADMIN - controllato dal Controller)
     public CategoryDto update(Integer id, CategoryDto categoryDto) throws ServiceException {
         try{ 
             Category category = categoryRepository.findById(id)
@@ -59,7 +59,7 @@ public class CategoryService {
         }
     }
 
-    // Elimina una categoria
+    // Elimina una categoria (solo ADMIN - controllato dal Controller)
     public void delete(Integer id) throws ServiceException {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new ServiceException("Categoria non trovata con ID: " + id));

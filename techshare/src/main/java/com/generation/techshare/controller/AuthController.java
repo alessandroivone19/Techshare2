@@ -45,6 +45,7 @@ public class AuthController {
     public ResponseEntity<?> register(@RequestBody UserDto userDto) {
         try {
             UserDto saved = userService.insert(userDto);
+            saved.setPassword(passwordEncoder.encode(saved.getPassword()));
             return ResponseEntity.ok(saved);
         } catch (ServiceException e) {
             return ResponseEntity.badRequest().body(e.toMap("Register"));

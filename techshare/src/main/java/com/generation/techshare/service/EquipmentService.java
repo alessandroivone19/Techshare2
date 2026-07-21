@@ -38,19 +38,18 @@ public class EquipmentService {
         return equipmentMapper.toDtos(equipments);
     }
 
-    // Crea una nuova attrezzatura
-    public EquipmentDto insert(EquipmentDto equipmentDto) throws ServiceException {
+    // Crea una nuova attrezzatura (con controllo permessi)
+    public EquipmentDto insertWithPermission(EquipmentDto equipmentDto, String currentUserEmail) throws ServiceException {
         Equipment equipment = equipmentMapper.toEntity(equipmentDto);
         try {
-            // Imposta owner
-            if (equipmentDto.getUserId() != null) {
-                User owner = userRepository.findById(equipmentDto.getUserId())
-                        .orElseThrow(() -> new ServiceException("Utente proprietario non trovato con ID: " + equipmentDto.getUserId()));
-    
-                equipment.setOwner(owner);
+            // Imposta automaticamente il proprietario come l'utente corrente
+            User owner = userRepository.findByEmail(currentUserEmail);
+            if (owner == null) {
+                throw new ServiceException("Utente corrente non trovato");
             }
+            equipment.setOwner(owner);
             
-            // Imposta category
+            // Imposta category se fornita
             if (equipmentDto.getCategoryId() != null) {
                 Category category = categoryRepository.findById(equipmentDto.getCategoryId())
                         .orElseThrow(() -> new ServiceException("Categoria non trovata con ID: " + equipmentDto.getCategoryId()));
@@ -65,11 +64,21 @@ public class EquipmentService {
         }
     }
 
-    // Aggiorna un'attrezzatura
-    public EquipmentDto update(Integer id, EquipmentDto equipmentDto) throws ServiceException {
+    // Aggiorna un'attrezzatura (con controllo permessi)
+    public EquipmentDto updateWithPermission(Integer id, EquipmentDto equipmentDto, String currentUserEmail) throws ServiceException {
         try {
             Equipment equipment = equipmentRepository.findById(id)
                     .orElseThrow(() -> new ServiceException("Attrezzatura non trovata con ID: " + id));
+            
+            // Controlla se l'utente corrente è il proprietario o ADMIN
+            User currentUser = userRepository.findByEmail(currentUserEmail);
+            if (currentUser == null) {
+                throw new ServiceException("Utente corrente non trovato");
+            }
+            
+            if (!currentUser.getRole().equals("ADMIN") && !equipment.getOwner().getId().equals(currentUser.getId())) {
+                throw new ServiceException("Non hai permessi per modificare questa attrezzatura");
+            }
     
             equipment.setTitle(equipmentDto.getTitle());
             equipment.setDescription(equipmentDto.getDescription());
@@ -78,13 +87,6 @@ public class EquipmentService {
             equipment.setAvailable(equipmentDto.getAvailable());
             equipment.setLatitude(equipmentDto.getLatitude());
             equipment.setLongitude(equipmentDto.getLongitude());
-            
-            // Aggiorna owner se fornito
-            if (equipmentDto.getUserId() != null) {
-                User owner = userRepository.findById(equipmentDto.getUserId())
-                        .orElseThrow(() -> new ServiceException("Utente proprietario non trovato con ID: " + equipmentDto.getUserId()));
-                equipment.setOwner(owner);
-            }
             
             // Aggiorna category se fornita
             if (equipmentDto.getCategoryId() != null) {
@@ -101,10 +103,21 @@ public class EquipmentService {
         }
     }
 
-    // Elimina un'attrezzatura
-    public void delete(Integer id) throws ServiceException {
+    // Elimina un'attrezzatura (con controllo permessi)
+    public void deleteWithPermission(Integer id, String currentUserEmail) throws ServiceException {
         Equipment equipment = equipmentRepository.findById(id)
                 .orElseThrow(() -> new ServiceException("Attrezzatura non trovata con ID: " + id));
+        
+        // Controlla se l'utente corrente è il proprietario o ADMIN
+        User currentUser = userRepository.findByEmail(currentUserEmail);
+        if (currentUser == null) {
+            throw new ServiceException("Utente corrente non trovato");
+        }
+        
+        if (!currentUser.getRole().equals("ADMIN") && !equipment.getOwner().getId().equals(currentUser.getId())) {
+            throw new ServiceException("Non hai permessi per eliminare questa attrezzatura");
+        }
+        
         equipmentRepository.delete(equipment);
     }
 
