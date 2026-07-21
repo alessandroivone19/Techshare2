@@ -25,7 +25,25 @@ public class EquipmentRequestService {
     private final EquipmentRepository equipmentRepository;
     private final EquipmentRequestMapper equipmentRequestMapper;
 
-    // Trova una richiesta per ID (senza controllo permessi)
+    // Se l'utente è ADMIN restituisce tutte le richieste del DB, altrimenti solo le sue
+    public List<EquipmentRequestDto> findAllForCurrentUser(String currentUserEmail) throws ServiceException {
+        User currentUser = userRepository.findByEmail(currentUserEmail);
+        if (currentUser == null) {
+            throw new ServiceException("Utente corrente non trovato");
+        }
+
+        // Se l'utente è ADMIN, carica tutte le richieste
+        if ("ADMIN".equalsIgnoreCase(currentUser.getRole())) {
+            List<EquipmentRequest> allRequests = equipmentRequestRepository.findAll();
+            return equipmentRequestMapper.toDtos(allRequests);
+        }
+
+        // Se è un utente normale, carica solo le sue
+        List<EquipmentRequest> userRequests = equipmentRequestRepository.findByUserEmail(currentUserEmail);
+        return equipmentRequestMapper.toDtos(userRequests);
+    }
+
+    // Trova una richiesta per ID (generale)
     public EquipmentRequestDto findById(Integer id) throws ServiceException {
         EquipmentRequest equipmentRequest = equipmentRequestRepository.findById(id)
                 .orElseThrow(() -> new ServiceException("Richiesta non trovata con ID: " + id));
@@ -42,7 +60,6 @@ public class EquipmentRequestService {
             throw new ServiceException("Utente corrente non trovato");
         }
 
-        // Verifica che l'utente loggato sia il creatore della richiesta o un ADMIN
         boolean isAdmin = "ADMIN".equalsIgnoreCase(currentUser.getRole());
         boolean isOwner = equipmentRequest.getUser() != null && equipmentRequest.getUser().getId().equals(currentUser.getId());
 
@@ -53,19 +70,19 @@ public class EquipmentRequestService {
         return equipmentRequestMapper.toDto(equipmentRequest);
     }
 
-    // Trova tutte le richieste (Generale)
+    // Trova tutte le richieste (Senza filtri)
     public List<EquipmentRequestDto> findAll() {
         List<EquipmentRequest> equipmentRequests = equipmentRequestRepository.findAll();
         return equipmentRequestMapper.toDtos(equipmentRequests);
     }
 
-    // Trova solo le richieste dell'utente attualmente loggato
+    // Trova solo le richieste dell'utente specificato
     public List<EquipmentRequestDto> findByCurrentUser(String email) {
         List<EquipmentRequest> requests = equipmentRequestRepository.findByUserEmail(email);
         return equipmentRequestMapper.toDtos(requests);
     }
 
-    // Crea una nuova richiesta (con controllo permessi)
+    // Crea una nuova richiesta
     public EquipmentRequestDto insertWithPermission(EquipmentRequestDto equipmentRequestDto, String currentUserEmail) throws ServiceException {
         EquipmentRequest equipmentRequest = equipmentRequestMapper.toEntity(equipmentRequestDto);
 
@@ -75,7 +92,6 @@ public class EquipmentRequestService {
         }
         equipmentRequest.setUser(user);
         
-        // Imposta equipment se fornito
         if (equipmentRequestDto.getEquipmentId() != null) {
             Equipment equipment = equipmentRepository.findById(equipmentRequestDto.getEquipmentId())
                     .orElseThrow(() -> new ServiceException("Attrezzatura non trovata con ID: " + equipmentRequestDto.getEquipmentId()));
@@ -86,7 +102,7 @@ public class EquipmentRequestService {
         return equipmentRequestMapper.toDto(savedEquipmentRequest);
     }
 
-    // Aggiorna una richiesta (con controllo permessi)
+    // Aggiorna una richiesta
     public EquipmentRequestDto updateWithPermission(Integer id, EquipmentRequestDto equipmentRequestDto, String currentUserEmail) throws ServiceException {
         EquipmentRequest equipmentRequest = equipmentRequestRepository.findById(id)
                 .orElseThrow(() -> new ServiceException("Richiesta non trovata con ID: " + id));
@@ -120,7 +136,7 @@ public class EquipmentRequestService {
         return equipmentRequestMapper.toDto(updatedEquipmentRequest);
     }
 
-    // Elimina una richiesta (con controllo permessi)
+    // Elimina una richiesta
     public void deleteWithPermission(Integer id, String currentUserEmail) throws ServiceException {
         EquipmentRequest equipmentRequest = equipmentRequestRepository.findById(id)
                 .orElseThrow(() -> new ServiceException("Richiesta non trovata con ID: " + id));

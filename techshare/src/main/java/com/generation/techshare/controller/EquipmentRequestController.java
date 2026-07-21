@@ -30,35 +30,33 @@ public class EquipmentRequestController {
 
     private final EquipmentRequestService equipmentRequestService;
 
-    // Solo l'utente autenticato può vedere LE SUE richieste
+    // Se l'utente è ADMIN restituisce TUTTE le richieste, se è USER restituisce solo le SUE
     @GetMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<EquipmentRequestDto>> getAllRequests() {
-        // Recuperiamo l'email dell'utente attualmente autenticato dal JWT
-        String currentUserEmail = SecurityContextHolder.getContext().getAuthentication().getName();
-        
-        // Passiamo l'email al service per filtrare le sole richieste dell'utente
-        List<EquipmentRequestDto> userRequests = equipmentRequestService.findByCurrentUser(currentUserEmail);
-        
-        return ResponseEntity.ok(userRequests);
+    public ResponseEntity<?> getAllRequests() {
+        try {
+            String currentUserEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+            List<EquipmentRequestDto> requests = equipmentRequestService.findAllForCurrentUser(currentUserEmail);
+            return ResponseEntity.ok(requests);
+        } catch (ServiceException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
 
-    // Un utente può vedere il dettaglio di una richiesta SOLO se gli appartiene (o se è ADMIN)
+    // Dettaglio richiesta per ID (solo proprietario o ADMIN)
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getRequestById(@PathVariable Integer id) {
         try {
             String currentUserEmail = SecurityContextHolder.getContext().getAuthentication().getName();
-            // Passiamo l'email per verificare i permessi di lettura
             EquipmentRequestDto requestDto = equipmentRequestService.findByIdWithPermission(id, currentUserEmail);
             return ResponseEntity.ok(requestDto);
         } catch (ServiceException e) {
-            // Se l'utente non è autorizzato o la risorsa non esiste, restituiamo FORBIDDEN o NOT_FOUND
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
         }
     }
 
-    // Solo autenticati possono creare richieste
+    // Creazione nuova richiesta (assegnata in automatico all'utente loggato)
     @PostMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> createRequest(@RequestBody EquipmentRequestDto requestDto) {
@@ -71,7 +69,7 @@ public class EquipmentRequestController {
         }
     }
 
-    // Solo chi ha fatto la richiesta o ADMIN possono modificare
+    // Modifica richiesta (solo proprietario o ADMIN)
     @PutMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> updateRequest(@PathVariable Integer id, @RequestBody EquipmentRequestDto requestDto) {
@@ -84,7 +82,7 @@ public class EquipmentRequestController {
         }
     }
 
-    // Solo chi ha fatto la richiesta o ADMIN possono eliminare
+    // Eliminazione richiesta (solo proprietario o ADMIN)
     @DeleteMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> deleteRequest(@PathVariable Integer id) {
