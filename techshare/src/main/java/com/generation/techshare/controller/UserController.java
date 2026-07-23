@@ -37,7 +37,18 @@ public class UserController {
         return ResponseEntity.ok(userService.findAll());
     }
 
-    // Tutti gli autenticati possono vedere un utente (il service validerà i permessi)
+    // Endpoint PUBBLICO per recuperare le info del proprietario dell'oggetto
+    @GetMapping("/public/{id}")
+    public ResponseEntity<?> getPublicUserById(@PathVariable Integer id) {
+        try {
+            UserDto userDto = userService.findById(id);
+            return ResponseEntity.ok(userDto);
+        } catch (ServiceException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
+    }
+
+    // Tutti gli autenticati possono vedere un utente
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getUserById(@PathVariable Integer id) {
@@ -60,12 +71,11 @@ public class UserController {
         }
     }
 
-    // Solo autenticati possono aggiornare (il service validerà se è il proprietario o admin)
+    // Solo autenticati possono aggiornare
     @PutMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> updateUser(@PathVariable Integer id, @RequestBody UserDto userDto) {
         try {
-            // Estrai l'email dell'utente loggato dal token
             String currentUserEmail = SecurityContextHolder.getContext().getAuthentication().getName();
             UserDto updatedUser = userService.updateWithPermission(id, userDto, currentUserEmail);
             return ResponseEntity.ok(updatedUser);
@@ -74,7 +84,7 @@ public class UserController {
         }
     }
 
-    // Solo ADMIN può eliminare utenti, oppure l'utente stesso
+    // Solo ADMIN o l'utente stesso possono eliminare
     @DeleteMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> deleteUser(@PathVariable Integer id) {

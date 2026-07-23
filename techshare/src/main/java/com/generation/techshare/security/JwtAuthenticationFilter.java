@@ -2,6 +2,7 @@ package com.generation.techshare.security;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.List;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -11,7 +12,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.lang.Collections;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -21,28 +21,42 @@ import jakarta.servlet.http.HttpServletResponse;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    // NOTA: In produzione questa chiave deve essere lunga almeno 256 bit e stare in application.properties
     private final String SECRET_KEY = "la_tua_chiave_segreta_super_sicura_e_molto_lunga_per_brianzatrains";
 
     @Override
-    protected void doFilterInternal
-    (
+    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        // 1. Ignora sempre le richieste HTTP OPTIONS (necessarie per il CORS)
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            return true;
+        }
+
+        String path = request.getRequestURI();
+        String method = request.getMethod();
+
+        // 2. Ignora la verifica del token per i path pubblici
+        if ("GET".equalsIgnoreCase(method) && path.startsWith("/techshare/api/users/public/")) {
+            return true;
+        }
+        if (path.startsWith("/techshare/api/auth/")) {
+            return true;
+        }
+
+        return false;
+    }
+
+    @Override
+    protected void doFilterInternal(
             HttpServletRequest request, 
             HttpServletResponse response, 
             FilterChain filterChain
-    )
-    throws ServletException, IOException {
+    ) throws ServletException, IOException {
         
-        // recupero il valore dell'header Authorization, che è quello che ho impostato
-        // nella chiamata http
         String authHeader = request.getHeader("Authorization");
-        //'Bearer '+token
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7); // Rimuove "Bearer " ed estrae solo il token
+            String token = authHeader.substring(7);
             
             try {
-                // Recuperiamo l'intero payload (claims) del token con una sola operazione di parsing
                 var claims = Jwts.parser()
                         .verifyWith(Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8)))
                         .build()
@@ -50,33 +64,29 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         .getPayload();
 
                 String username = claims.getSubject();
-                
-                // Estraiamo il ruolo dal claim personalizzato "role" che abbiamo impostato nel JwtService
                 String role = claims.get("ROLE", String.class);
 
                 if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    
-                    // Creiamo la lista di autorità. Se il ruolo esiste, gli iniettiamo davanti il prefisso "ROLE_"
-                    // In questo modo .hasRole("ADMIN") cercherà esattamente "ROLE_ADMIN" e darà il via libera.
+                    // Usa java.util.Collections al posto del package interno di JJWT
                     List<SimpleGrantedAuthority> authorities = Collections.emptyList();
+                    
                     if (role != null) {
-                        authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role));
+                        // Se il ruolo ha già il prefisso "ROLE_", evita di raddoppiarlo
+                        String formattedRole = role.startsWith("ROLE_") ? role : "ROLE_" + role;
+                        authorities = List.of(new SimpleGrantedAuthority(formattedRole));
                     }
 
-                    // Passiamo le autorità reali al token di autenticazione anziché la lista vuota
                     UsernamePasswordAuthenticationToken authToken = 
                             new UsernamePasswordAuthenticationToken(username, null, authorities);
                     
-                    // Salva l'utente nel contesto con i suoi ruoli attivi
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             } catch (Exception e) {
-                // Token scaduto, manomesso o non valido: non facciamo nulla, la richiesta fallirà l'autorizzazione
-                e.printStackTrace();
+                // In caso di token invalido/scaduto, svuota il contesto di sicurezza
+                SecurityContextHolder.clearContext();
             }
         }
 
-        // Passa la richiesta al filtro successivo della catena
         filterChain.doFilter(request, response);
     }
 }

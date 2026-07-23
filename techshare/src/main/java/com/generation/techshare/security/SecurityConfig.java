@@ -1,4 +1,7 @@
 package com.generation.techshare.security;
+
+import java.util.List;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -10,10 +13,13 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity(prePostEnabled = true) // Abilita @PreAuthorize e @PostAuthorize
+@EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
@@ -30,17 +36,18 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .cors(cors -> {})
+            .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Configurazione CORS attiva
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Endpoint pubblici (no autenticazione)
+                // Endpoint pubblici
                 .requestMatchers("/techshare/api/auth/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/techshare/api/categories").permitAll()        // GET categories per tutti
-                .requestMatchers(HttpMethod.GET, "/techshare/api/categories/**").permitAll()     // GET categoria singola per tutti
-                .requestMatchers(HttpMethod.GET, "/techshare/api/equipments").permitAll()        // GET equipments per tutti
-                .requestMatchers(HttpMethod.GET, "/techshare/api/equipments/**").permitAll()     // GET equipment singolo per tutti
-                .requestMatchers(HttpMethod.POST,"/techshare/api/users").permitAll()           // POST requests per tutti
+                .requestMatchers(HttpMethod.GET, "/techshare/api/categories").permitAll()
+                .requestMatchers(HttpMethod.GET, "/techshare/api/categories/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/techshare/api/equipments").permitAll()
+                .requestMatchers(HttpMethod.GET, "/techshare/api/equipments/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/techshare/api/users/public/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/techshare/api/users").permitAll()
                 
                 // Tutti gli altri endpoint richiedono autenticazione
                 .anyRequest().authenticated()
@@ -48,5 +55,19 @@ public class SecurityConfig {
 
         http.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
+    }
+
+    // Bean globale per abilitare CORS da Angular (http://localhost:4200)
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(List.of("http://localhost:4200")); // Origine consentita
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 }

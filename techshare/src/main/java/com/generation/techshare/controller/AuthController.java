@@ -44,8 +44,8 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody UserDto userDto) {
         try {
+            // Il metodo insert di userService si occupa gia di cifrare la password in modo corretto
             UserDto saved = userService.insert(userDto);
-            saved.setPassword(passwordEncoder.encode(saved.getPassword()));
             return ResponseEntity.ok(saved);
         } catch (ServiceException e) {
             return ResponseEntity.badRequest().body(e.toMap("Register"));
