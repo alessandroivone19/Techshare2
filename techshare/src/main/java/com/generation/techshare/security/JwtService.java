@@ -21,6 +21,11 @@ public class JwtService {
     public String generateToken(User user) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("ROLE", user.getRole());
+        claims.put("userId", user.getId());
+
+        // 👈 AGGIUNTI NOME E COGNOME NEI CLAIMS DEL JWT
+        claims.put("firstName", user.getFirstName());
+        claims.put("lastName", user.getLastName()); // Se nella tua entity User si chiama getSurname(), usa getSurname()
 
         return Jwts.builder()
                 .claims(claims)

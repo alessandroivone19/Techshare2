@@ -98,4 +98,21 @@ public class UserService {
         userRepository.delete(user);
     }
 
+    // 👈 NUOVO METODO AGGIUNTO PER IL CAMBIO PASSWORD
+    public void changePassword(String email, String currentPassword, String newPassword) throws ServiceException {
+        // 1. Recupera l'utente tramite l'email estratta dal token JWT
+        User user = userRepository.findByEmail(email);
+        if (user == null) {
+            throw new ServiceException("Utente non trovato");
+        }
+
+        // 2. Verifica che la password attuale sia corretta
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new ServiceException("La password attuale non è corretta");
+        }
+
+        // 3. Cripta la nuova password e salvala
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
 }

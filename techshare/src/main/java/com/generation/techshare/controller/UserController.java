@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.generation.techshare.dto.ChangePasswordDto;
 import com.generation.techshare.dto.UserDto;
 import com.generation.techshare.exception.ServiceException;
 import com.generation.techshare.service.UserService;
@@ -81,6 +82,19 @@ public class UserController {
             return ResponseEntity.ok(updatedUser);
         } catch (ServiceException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
+    // Endpoint per il cambio password dell'utente autenticato
+    @PutMapping("/change-password")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> changePassword(@RequestBody ChangePasswordDto request) {
+        try {
+            String currentUserEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+            userService.changePassword(currentUserEmail, request.getCurrentPassword(), request.getNewPassword());
+            return ResponseEntity.ok().body("{\"message\": \"Password aggiornata con successo!\"}");
+        } catch (ServiceException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("{\"error\": \"" + e.getMessage() + "\"}");
         }
     }
 
