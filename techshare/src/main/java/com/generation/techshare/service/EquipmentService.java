@@ -9,9 +9,11 @@ import com.generation.techshare.exception.ServiceException;
 import com.generation.techshare.mapper.EquipmentMapper;
 import com.generation.techshare.model.Category;
 import com.generation.techshare.model.Equipment;
+import com.generation.techshare.model.EquipmentRequest;
 import com.generation.techshare.model.User;
 import com.generation.techshare.repository.CategoryRepository;
 import com.generation.techshare.repository.EquipmentRepository;
+import com.generation.techshare.repository.EquipmentRequestRepository;
 import com.generation.techshare.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 public class EquipmentService {
 
     private final EquipmentRepository equipmentRepository;
+    private final EquipmentRequestRepository equipmentRequestRepository; 
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
     private final EquipmentMapper equipmentMapper;
@@ -38,10 +41,15 @@ public class EquipmentService {
         return equipmentMapper.toDtos(equipments);
     }
 
-    // Crea una nuova attrezzatura (con controllo permessi)
+    // Crea una nuova attrezzatura (con controllo permessi e coordinate esplicite)
     public EquipmentDto insertWithPermission(EquipmentDto equipmentDto, String currentUserEmail) throws ServiceException {
-        Equipment equipment = equipmentMapper.toEntity(equipmentDto);
         try {
+            Equipment equipment = equipmentMapper.toEntity(equipmentDto);
+            
+            // 👈 FORZA ESPLICITAMENTE LA COPIA DELLE COORDINATE DAL DTO
+            equipment.setLatitude(equipmentDto.getLatitude());
+            equipment.setLongitude(equipmentDto.getLongitude());
+
             // Imposta automaticamente il proprietario come l'utente corrente
             User owner = userRepository.findByEmail(currentUserEmail);
             if (owner == null) {
@@ -60,7 +68,8 @@ public class EquipmentService {
             return equipmentMapper.toDTO(savedEquipment);
             
         } catch (Exception e) {
-            throw new ServiceException("non è stato possibile salvare l'equipaggiamento");
+            e.printStackTrace(); // Stampa l'errore reale in console per aiutarti nel debug
+            throw new ServiceException("non è stato possibile salvare l'equipaggiamento: " + e.getMessage());
         }
     }
 
@@ -121,4 +130,27 @@ public class EquipmentService {
         equipmentRepository.delete(equipment);
     }
 
+    // Trova gli equipment compatibili con una EquipmentRequest (per categoria, raggio e posizione)
+    public List<EquipmentDto> findMatchingForRequest(Integer requestId) throws ServiceException {
+        EquipmentRequest request = equipmentRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ServiceException("Richiesta non trovata con ID: " + requestId));
+
+        if (request.getCategory() == null) {
+            throw new ServiceException("La richiesta non ha una categoria associata");
+        }
+
+        if (request.getLatitude() == null || request.getLongitude() == null || request.getSearchRadius() == null) {
+            throw new ServiceException("La richiesta non possiede coordinate o raggio di ricerca validi");
+        }
+
+        // Sfrutta la query nativa Haversine definita nell'EquipmentRepository
+        List<Equipment> matchings = equipmentRepository.findMatchingEquipment(
+            request.getLatitude(),
+            request.getLongitude(),
+            request.getSearchRadius().doubleValue(),
+            request.getCategory().getId()
+        );
+
+        return equipmentMapper.toDtos(matchings);
+    }
 }

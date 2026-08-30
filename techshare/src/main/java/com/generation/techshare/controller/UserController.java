@@ -31,14 +31,24 @@ public class UserController {
 
     private final UserService userService;
 
-    // Solo ADMIN può vedere tutti gli utenti
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<UserDto>> getAllUsers() {
         return ResponseEntity.ok(userService.findAll());
     }
 
-    // Endpoint PUBBLICO per recuperare le info del proprietario dell'oggetto
+    @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> getCurrentUserProfile() {
+        try {
+            String currentUserEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+            UserDto userDto = userService.findDtoByEmail(currentUserEmail);
+            return ResponseEntity.ok(userDto);
+        } catch (ServiceException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
+    }
+
     @GetMapping("/public/{id}")
     public ResponseEntity<?> getPublicUserById(@PathVariable Integer id) {
         try {
@@ -49,7 +59,6 @@ public class UserController {
         }
     }
 
-    // Tutti gli autenticati possono vedere un utente
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getUserById(@PathVariable Integer id) {
@@ -61,7 +70,6 @@ public class UserController {
         }
     }
 
-    // Chiunque può registrarsi (no @PreAuthorize)
     @PostMapping
     public ResponseEntity<?> createUser(@RequestBody UserDto userDto) {
         try {
@@ -72,7 +80,6 @@ public class UserController {
         }
     }
 
-    // Solo autenticati possono aggiornare
     @PutMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> updateUser(@PathVariable Integer id, @RequestBody UserDto userDto) {
@@ -85,7 +92,6 @@ public class UserController {
         }
     }
 
-    // Endpoint per il cambio password dell'utente autenticato
     @PutMapping("/change-password")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> changePassword(@RequestBody ChangePasswordDto request) {
@@ -98,7 +104,6 @@ public class UserController {
         }
     }
 
-    // Solo ADMIN o l'utente stesso possono eliminare
     @DeleteMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> deleteUser(@PathVariable Integer id) {

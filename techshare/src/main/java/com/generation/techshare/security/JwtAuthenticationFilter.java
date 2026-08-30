@@ -2,7 +2,6 @@ package com.generation.techshare.security;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
 import java.util.List;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -11,6 +10,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.FilterChain;
@@ -24,67 +24,62 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final String SECRET_KEY = "la_tua_chiave_segreta_super_sicura_e_molto_lunga_per_brianzatrains";
 
     @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
-        // 1. Ignora sempre le richieste HTTP OPTIONS (necessarie per il CORS)
-        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
-            return true;
-        }
-
-        String path = request.getRequestURI();
-        String method = request.getMethod();
-
-        // 2. Ignora la verifica del token per i path pubblici
-        if ("GET".equalsIgnoreCase(method) && path.startsWith("/techshare/api/users/public/")) {
-            return true;
-        }
-        if (path.startsWith("/techshare/api/auth/")) {
-            return true;
-        }
-
-        return false;
-    }
-
-    @Override
     protected void doFilterInternal(
             HttpServletRequest request, 
             HttpServletResponse response, 
             FilterChain filterChain
     ) throws ServletException, IOException {
-        
+
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String authHeader = request.getHeader("Authorization");
 
+        System.out.println("--- [JWT FILTER] URI: " + request.getRequestURI() + " ---");
+        System.out.println("Header Authorization ricevuto: " + (authHeader != null ? "PRESENTE (Inizia con Bearer: " + authHeader.startsWith("Bearer ") + ")" : "ASSENTE"));
+
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
-            
+            String token = authHeader.substring(7).trim();
+
             try {
-                var claims = Jwts.parser()
+                Claims claims = Jwts.parser()
                         .verifyWith(Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8)))
                         .build()
                         .parseSignedClaims(token)
                         .getPayload();
 
                 String username = claims.getSubject();
+                System.out.println("Token decodificato con successo. Subject (Email): " + username);
+                
                 String role = claims.get("ROLE", String.class);
+                if (role == null) {
+                    role = claims.get("role", String.class);
+                }
 
                 if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    // Usa java.util.Collections al posto del package interno di JJWT
-                    List<SimpleGrantedAuthority> authorities = Collections.emptyList();
+                    List<SimpleGrantedAuthority> authorities;
                     
-                    if (role != null) {
-                        // Se il ruolo ha già il prefisso "ROLE_", evita di raddoppiarlo
+                    if (role != null && !role.isBlank()) {
                         String formattedRole = role.startsWith("ROLE_") ? role : "ROLE_" + role;
                         authorities = List.of(new SimpleGrantedAuthority(formattedRole));
+                    } else {
+                        authorities = List.of(new SimpleGrantedAuthority("ROLE_USER"));
                     }
 
                     UsernamePasswordAuthenticationToken authToken = 
                             new UsernamePasswordAuthenticationToken(username, null, authorities);
                     
                     SecurityContextHolder.getContext().setAuthentication(authToken);
+                    System.out.println("✅ SecurityContext impostato con successo per l'utente: " + username + " con autorità: " + authorities);
                 }
             } catch (Exception e) {
-                // In caso di token invalido/scaduto, svuota il contesto di sicurezza
+                System.err.println("❌ ERRORE CRITICO validazione JWT nel filtro: " + e.getClass().getName() + " - " + e.getMessage());
                 SecurityContextHolder.clearContext();
             }
+        } else {
+            System.out.println("⚠️ Nessun token Bearer trovato nell'header per questa richiesta protetta.");
         }
 
         filterChain.doFilter(request, response);

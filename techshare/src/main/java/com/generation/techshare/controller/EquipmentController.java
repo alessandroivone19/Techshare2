@@ -85,4 +85,16 @@ public class EquipmentController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }
     }
+
+    // 👈 NUOVO ENDPOINT: Restituisce gli attrezzi compatibili con una specifica EquipmentRequest
+    @GetMapping("/request/{requestId}/matching")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> getMatchingEquipmentForRequest(@PathVariable Integer requestId) {
+        try {
+            List<EquipmentDto> matchings = equipmentService.findMatchingForRequest(requestId);
+            return ResponseEntity.ok(matchings);
+        } catch (ServiceException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
 }

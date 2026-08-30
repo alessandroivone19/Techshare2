@@ -2,8 +2,6 @@ package com.generation.techshare.security;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
@@ -19,17 +17,12 @@ public class JwtService {
     private final long EXPIRATION_TIME = 86400000; 
 
     public String generateToken(User user) {
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("ROLE", user.getRole());
-        claims.put("userId", user.getId());
-
-        // 👈 AGGIUNTI NOME E COGNOME NEI CLAIMS DEL JWT
-        claims.put("firstName", user.getFirstName());
-        claims.put("lastName", user.getLastName()); // Se nella tua entity User si chiama getSurname(), usa getSurname()
-
         return Jwts.builder()
-                .claims(claims)
                 .subject(user.getEmail())
+                .claim("ROLE", user.getRole())
+                .claim("userId", user.getId())
+                .claim("firstName", user.getFirstName())
+                .claim("lastName", user.getLastName())
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
                 .signWith(Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8)))

@@ -30,7 +30,7 @@ public class EquipmentRequestController {
 
     private final EquipmentRequestService equipmentRequestService;
 
-    // Se l'utente è ADMIN restituisce TUTTE le richieste, se è USER restituisce solo le SUE
+    // Restituisce le richieste dell'utente loggato
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getAllRequests() {
@@ -43,7 +43,20 @@ public class EquipmentRequestController {
         }
     }
 
-    // Dettaglio richiesta per ID (solo proprietario o ADMIN)
+    // Endpoint per /all: restituisce tutte le richieste degli ALTRI utenti
+    @GetMapping("/all")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> getAllRequestsExplicit() {
+        try {
+            String currentUserEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+            List<EquipmentRequestDto> requests = equipmentRequestService.findRequestsFromOtherUsers(currentUserEmail);
+            return ResponseEntity.ok(requests);
+        } catch (ServiceException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
+    // Dettaglio richiesta per ID
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getRequestById(@PathVariable Integer id) {
@@ -56,7 +69,7 @@ public class EquipmentRequestController {
         }
     }
 
-    // Creazione nuova richiesta (assegnata in automatico all'utente loggato)
+    // Creazione nuova richiesta
     @PostMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> createRequest(@RequestBody EquipmentRequestDto requestDto) {
@@ -69,7 +82,7 @@ public class EquipmentRequestController {
         }
     }
 
-    // Modifica richiesta (solo proprietario o ADMIN)
+    // Modifica richiesta
     @PutMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> updateRequest(@PathVariable Integer id, @RequestBody EquipmentRequestDto requestDto) {
@@ -82,7 +95,7 @@ public class EquipmentRequestController {
         }
     }
 
-    // Eliminazione richiesta (solo proprietario o ADMIN)
+    // Eliminazione richiesta
     @DeleteMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> deleteRequest(@PathVariable Integer id) {

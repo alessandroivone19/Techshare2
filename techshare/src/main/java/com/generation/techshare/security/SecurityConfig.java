@@ -36,19 +36,24 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Configurazione CORS attiva
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                // Consenti esplicitamente tutte le richieste pre-flight CORS (OPTIONS)
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
                 // Endpoint pubblici
                 .requestMatchers("/techshare/api/auth/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/techshare/api/categories").permitAll()
                 .requestMatchers(HttpMethod.GET, "/techshare/api/categories/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/techshare/api/equipments").permitAll()
                 .requestMatchers(HttpMethod.GET, "/techshare/api/equipments/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/techshare/api/users/public/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/techshare/api/users").permitAll()
                 
+                // Endpoint protetti specifici
+                .requestMatchers(HttpMethod.GET, "/techshare/api/requests/all").authenticated()
+                .requestMatchers("/techshare/api/users/me").authenticated()
+
                 // Tutti gli altri endpoint richiedono autenticazione
                 .anyRequest().authenticated()
             );
@@ -57,13 +62,15 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // Bean globale per abilitare CORS da Angular (http://localhost:4200)
+    // Bean globale per abilitare CORS da Angular
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:4200")); // Origine consentita
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
+        
+        configuration.setAllowedOriginPatterns(List.of("http://localhost:4200", "http://127.0.0.1:4200"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setExposedHeaders(List.of("Authorization"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

@@ -28,15 +28,15 @@ public class EquipmentRequest {
 
     private String status;
 
-   
-    // Molte richieste possono appartenere ad una sola attrezzatura
-    @ManyToOne
-    @JoinColumn(name = "equipment_id")
-    private Equipment equipment;
 
     // Molte richieste possono essere fatte da 1 utente
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;
+
+    // 👈 AGGIUNTO: Una richiesta è associata a una Categoria specifica (es. "Attrezzi")
+    @ManyToOne
+    @JoinColumn(name = "category_id")
+    private Category category;
 
 }
